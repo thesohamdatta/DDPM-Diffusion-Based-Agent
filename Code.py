@@ -1,89 +1,86 @@
-# Diffusion-Based Idea Refinement Framework
+# Install
+!pip install -q google-generativeai
 
----
+# Imports
+import google.generativeai as genai
+import random
+import time
 
-## Abstract
+# Configure API
+genai.configure(api_key="YOUR_NEW_API_KEY")
 
-This project presents a minimal framework for iterative idea refinement inspired by diffusion processes. Instead of generating outputs in a single step, the system progressively improves an initial idea through repeated cycles of perturbation and reconstruction.
+# Use a valid model from your available list
+model = genai.GenerativeModel("gemini-2.5-flash")
 
----
+# -------------------------------
+# Add noise (forward process)
+# -------------------------------
+def add_noise(text):
+    words = text.split()
+    words = [w for w in words if random.random() > 0.2]
+    random.shuffle(words)
+    return " ".join(words)
 
-## Conceptual Model
+# -------------------------------
+# Refine idea (reverse process)
+# -------------------------------
+def refine_text(text, goal, retries=3):
+    prompt = f"""
+You improve ideas step by step.
 
-The framework follows an iterative pipeline:
+Goal:
+{goal}
 
-```
-x0 -> Noise(x) -> Refine(x) -> ... -> xT
-```
+Current idea:
+{text}
 
-Each iteration improves structure and clarity.
+Improve it:
+- make it clear
+- structure it
+- make it realistic
+- keep it concise
 
----
+Return only the improved idea.
+"""
 
-## Methodology
+    for attempt in range(retries):
+        try:
+            response = model.generate_content(prompt)
+            return response.text.strip()
+        
+        except Exception as e:
+            print(f"Retry {attempt+1} due to error:", e)
+            time.sleep(10)
 
-The system consists of two main operations:
+    return "Failed to refine."
 
-### 1. Forward Perturbation
+# -------------------------------
+# Diffusion loop
+# -------------------------------
+def diffusion_agent(goal, steps=3):
+    current = f"random vague idea about {goal}"
+    history = []
 
-A stochastic transformation is applied:
+    for step in range(steps):
+        print(f"\nSTEP {step+1}")
+        
+        noisy = add_noise(current)
+        print("Noisy idea:\n", noisy)
+        
+        refined = refine_text(noisy, goal)
+        print("\nRefined idea:\n", refined)
+        
+        current = refined
+        history.append(refined)
+        
+        time.sleep(5)
 
-* partial removal of words
-* reordering of tokens
+    return history
 
-This produces a degraded representation.
+# -------------------------------
+# Run
+# -------------------------------
+goal = "Build an AI startup for students"
+results = diffusion_agent(goal, steps=3)
 
-### 2. Reverse Refinement
-
-A language model reconstructs the input by:
-
-* restoring meaning
-* improving structure
-* aligning with the objective
-
----
-
-## Algorithm
-
-```
-Initialize x0 (initial idea)
-
-For t = 1 to T:
-    x_noisy = Noise(x)
-    x = Refine(x_noisy)
-
-Return x
-```
-
----
-
-## Implementation
-
-The system is implemented in Python using a generative language model API.
-
-Core components:
-
-* add_noise() : stochastic perturbation
-* refine_text() : model-based refinement
-* diffusion_agent() : iterative loop
-
----
-
-## Key Insight
-
-Structured outputs can emerge through iterative refinement rather than direct generation. This suggests that reasoning can be modeled as progressive denoising.
-
----
-
-## Applications
-
-* multi-agent refinement systems
-* evaluation loops
-* memory-augmented reasoning
-* autonomous planning systems
-
----
-
-## Conclusion
-
-This framework demonstrates a process-based view of intelligence, where quality emerges through repeated improvement instead of single-step inference.
+print("\nFinal Output:\n", results[-1])
